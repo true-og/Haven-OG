@@ -1,0 +1,3 @@
+despawn-hostile-mobs: true
+prevent-hostile-targeting: true
+target-clear-radius: 48.0
