@@ -17,9 +17,13 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
+import com.sk89q.worldguard.protection.ApplicableRegionSet;
+import com.sk89q.worldguard.protection.FlagValueCalculator;
 import com.sk89q.worldguard.protection.flags.StateFlag;
 import com.sk89q.worldguard.protection.flags.StateFlag.State;
 import com.sk89q.worldguard.protection.regions.RegionQuery;
+import com.sk89q.worldguard.protection.regions.RegionQuery.QueryOption;
+import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 
 import io.papermc.paper.event.entity.EntityMoveEvent;
 
@@ -53,7 +57,7 @@ final class HavenListener implements Listener {
 
         }
 
-        if (!isHaven(event.getTo())) {
+        if (!isHaven(event.getTo()) || hasAllowedCombatTarget(event.getEntity())) {
 
             return;
 
@@ -149,7 +153,53 @@ final class HavenListener implements Listener {
 
     private boolean isHaven(Location location) {
 
-        return query.queryState(BukkitAdapter.adapt(location), null, havenFlag) == State.ALLOW;
+        final ApplicableRegionSet regions = query.getApplicableRegions(BukkitAdapter.adapt(location), QueryOption.SORT);
+        if (regions.isVirtual() || regions.size() == 0) {
+
+            return false;
+
+        }
+
+        final int highestPriority = highestPriority(regions);
+        State state = null;
+
+        for (final ProtectedRegion region : regions) {
+
+            if (FlagValueCalculator.getPriorityOf(region) != highestPriority) {
+
+                continue;
+
+            }
+
+            state = StateFlag.combine(state, FlagValueCalculator.getEffectiveFlagOf(region, havenFlag, null));
+            if (state == State.DENY) {
+
+                return false;
+
+            }
+
+        }
+
+        return state == State.ALLOW;
+
+    }
+
+    private static int highestPriority(ApplicableRegionSet regions) {
+
+        int highestPriority = Integer.MIN_VALUE;
+
+        for (final ProtectedRegion region : regions) {
+
+            final int priority = FlagValueCalculator.getPriorityOf(region);
+            if (priority > highestPriority) {
+
+                highestPriority = priority;
+
+            }
+
+        }
+
+        return highestPriority;
 
     }
 
@@ -162,6 +212,19 @@ final class HavenListener implements Listener {
     private static boolean isProtectedTarget(Entity entity) {
 
         return entity instanceof Player || isPlayerPet(entity) || isPlayerMount(entity);
+
+    }
+
+    private boolean hasAllowedCombatTarget(Entity entity) {
+
+        if (!(entity instanceof Mob mob)) {
+
+            return false;
+
+        }
+
+        final Entity target = mob.getTarget();
+        return target != null && isProtectedTarget(target) && !isHaven(target.getLocation());
 
     }
 
