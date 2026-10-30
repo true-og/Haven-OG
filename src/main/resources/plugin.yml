@@ -1,7 +1,7 @@
 name: Haven-OG
 author: NotAlexNoyle
 description: WorldGuard haven regions for hostile mob entry and targeting control.
-website: https://github.com/true-og/Haven-OG/
+website: https://git.trueog.net/trueog/Haven-OG/
 version: '${version}'
 api-version: '${apiVersion}'
 main: net.trueog.havenog.HavenOG
